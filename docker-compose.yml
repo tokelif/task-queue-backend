@@ -1,0 +1,66 @@
+services:
+  db:
+    image: postgres:15
+    container_name: backend-db
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: user
+      POSTGRES_DB: task_queue_db
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "user", "-d", "task_queue_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: backend-api
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "5000:5000"
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: task_queue_db
+      DB_USER: user
+      DB_PASSWORD: user
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+
+  worker:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    container_name: backend-worker
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: task_queue_db
+      DB_USER: user
+      DB_PASSWORD: user
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: backend-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+volumes:
+  pgdata:
