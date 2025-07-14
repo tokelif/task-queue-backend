@@ -59,6 +59,9 @@ cd task-queue-backend
 docker compose up --build
 # or for classic Docker Compose:
 docker-compose up --build
+#or
+sudo docker-compose up --build
+
 ```
 
 Services:
